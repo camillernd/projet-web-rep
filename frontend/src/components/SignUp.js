@@ -15,7 +15,7 @@ import Container from '@mui/material/Container';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { Link } from 'react-router-dom';
 
-function SignUp() {
+function SignUp({socket}) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',

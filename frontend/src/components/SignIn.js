@@ -14,7 +14,7 @@ import Typography from '@mui/material/Typography';
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import './SignIn.css';
 
-function SignInSide({ onLogin }) {
+function SignInSide({ onLogin, socket}) {
   const navigate = useNavigate();
   const [errorMessage, setErrorMessage] = useState('');
 

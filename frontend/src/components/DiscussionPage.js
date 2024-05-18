@@ -1,36 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import io from 'socket.io-client'; // Importer la bibliothèque client Socket.IO
+import LikeButton from './LikeButton'; // Importer le composant LikeButton
 
-function DiscussionPage({ user }) {
+function DiscussionPage({ user, socket }) {
   const { discussionId } = useParams();
   const [discussionData, setDiscussionData] = useState(null);
   const [messages, setMessages] = useState([]);
-  const [creatorData, setCreatorData] = useState(null);
+  const [newMessageContent, setNewMessageContent] = useState('');
 
   useEffect(() => {
-    // Connexion au serveur WebSocket
-    const socket = io('http://localhost:3000');
-
-    // Écouter les événements de nouvelles discussions
-    socket.on('discussionCreated', (newDiscussion) => {
-      setDiscussionData(newDiscussion);
-    });
-
-    // Écouter les événements de nouveaux messages
-    socket.on('messageCreated', (newMessage) => {
-      setMessages(prevMessages => [...prevMessages, newMessage]);
-    });
-
     const fetchData = async () => {
       try {
         const discussionResponse = await axios.get(`http://localhost:3000/api/discussion/${discussionId}`);
         setDiscussionData(discussionResponse.data);
 
-        const userResponse = await axios.get(`http://localhost:3000/api/user/${discussionResponse.data.userId}`);
-        setCreatorData(userResponse.data.data);
+        fetchMessages(); // Appel initial pour récupérer les messages
+      } catch (error) {
+        console.error('Erreur lors de la récupération des données de la discussion :', error);
+      }
+    };
 
+    const fetchMessages = async () => {
+      try {
         const messagesResponse = await axios.get(`http://localhost:3000/api/message?discussionId=${discussionId}`);
 
         if (messagesResponse.data.length === 0) {
@@ -40,7 +32,7 @@ function DiscussionPage({ user }) {
             const userResponse = await axios.get(`http://localhost:3000/api/user/${message.userId}`);
             const userData = userResponse.data.data;
 
-            const likesResponse = await axios.get(`http://localhost:3000/api/like?messageId=${message._id}`);
+            const likesResponse = await axios.get(`http://localhost:3000/api/like/count?messageId=${message._id}`);
             const likesCount = likesResponse.data.likesCount;
 
             const messageWithUserDataAndLikes = { ...message, userData, likesCount };
@@ -50,25 +42,49 @@ function DiscussionPage({ user }) {
           setMessages(messagesWithUserData);
         }
       } catch (error) {
-        console.error('Erreur lors de la récupération des données de la discussion :', error);
+        console.error('Erreur lors de la récupération des messages :', error);
       }
     };
 
     fetchData();
 
-    // Nettoyage de la connexion WebSocket lors du démontage du composant
+    // Écouter l'événement de création de message
+    socket.on('messageCreated', () => {
+      fetchMessages(); // Appel de fetchMessages à chaque création de message
+    });
+
     return () => {
-      socket.disconnect();
+      socket.off('messageCreated');
     };
-  }, [discussionId]);
+  }, [discussionId, socket]);
+
+  const handleNewMessageSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const newMessage = {
+        discussionId: discussionId,
+        userId: user.userId,
+        content: newMessageContent,
+      };
+      await axios.post(`http://localhost:3000/api/message`, newMessage);
+
+      // Émettre l'événement de création de message
+      socket.emit('createMessage', newMessage);
+
+      setNewMessageContent(''); // Réinitialiser le contenu du nouveau message
+      
+    } catch (error) {
+      console.error('Erreur lors de la création du nouveau message :', error);
+    }
+  };
 
   return (
     <div>
       {discussionData ? (
         <div>
           <h2>Titre de la discussion : {discussionData.title}</h2>
-          {creatorData && (
-            <p>Créé par : {creatorData.firstName} {creatorData.lastName}</p>
+          {discussionData.userData && (
+            <p>Créé par : {discussionData.userData.firstName} {discussionData.userData.lastName}</p>
           )}
         </div>
       ) : (
@@ -84,9 +100,21 @@ function DiscussionPage({ user }) {
               <p>Créé par : {message.userData.firstName} {message.userData.lastName}</p>
             )}
             <p>Likes: {message.likesCount}</p>
+            {/* Ajouter le bouton LikeButton avec les propriétés nécessaires */}
+            <LikeButton user={user} messageId={message._id} />
           </li>
         ))}
       </ul>
+
+      <form onSubmit={handleNewMessageSubmit}>
+        <input 
+          type="text" 
+          placeholder="Saisir un nouveau message" 
+          value={newMessageContent}
+          onChange={(event) => setNewMessageContent(event.target.value)} 
+        />
+        <button type="submit">Envoyer</button>
+      </form>
     </div>
   );
 }

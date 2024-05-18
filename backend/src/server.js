@@ -49,7 +49,7 @@ io.on('connection', (socket) => {
     io.emit('discussionDeleted', discussionId);
   });
 
-  socket.on('newMessage', (message) => {
+  socket.on('createMessage', (message) => {
     io.emit('messageCreated', message);
   });
 

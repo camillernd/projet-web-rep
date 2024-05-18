@@ -5,7 +5,8 @@ import SignUp from './components/SignUp';
 import HomePage from './components/HomePage';
 import MovieDetailPage from './components/MovieDetailPage';
 import DiscussionPage from './components/DiscussionPage';
-import { jwtDecode } from 'jwt-decode'; // Supprimer les accolades pour jwtDecode
+import { jwtDecode } from 'jwt-decode'; 
+import socket from './socket';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -25,6 +26,7 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    socket.disconnect();
   };
 
   const handleLogin = (token) => {
@@ -40,20 +42,20 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<SignIn onLogin={handleLogin} />} />
-        <Route path="/signin" element={<SignIn onLogin={handleLogin} />} />
-        <Route path="/signup" element={<SignUp />} />
+        <Route path="/" element={<SignIn onLogin={handleLogin} socket={socket}/>} />
+        <Route path="/signin" element={<SignIn onLogin={handleLogin} socket={socket}/>} />
+        <Route path="/signup" element={<SignUp socket={socket}/>} />
         <Route
           path="/home"
-          element={<HomePage user={user} onLogout={handleLogout} />}
+          element={<HomePage user={user} onLogout={handleLogout} socket={socket}/>}
         />
         <Route
           path="/movie/:id"
-          element={<MovieDetailPage user={user} />}
+          element={<MovieDetailPage user={user} socket={socket} />} // Passer le socket en tant que prop
         />
         <Route
           path="/discussion/:discussionId"
-          element={<DiscussionPage user={user} />}
+          element={<DiscussionPage user={user} socket={socket} />} // Passer le socket en tant que prop
         />
       </Routes>
     </Router>

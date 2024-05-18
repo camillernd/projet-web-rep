@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom'; 
 import './HomePage.css'; // Importer le fichier de style CSS
 
-function HomePage({ user, onLogout }) {
+function HomePage({ user, onLogout, socket}) {
   const [moviesData, setMoviesData] = useState([]); // State to store movie data
 
   useEffect(() => {
