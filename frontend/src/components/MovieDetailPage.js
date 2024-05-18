@@ -40,10 +40,16 @@ function MovieDetailPage({ user, socket }) {
       fetchDiscussions();
     });
 
+    // Écouter l'événement de suppression de discussion
+    socket.on('discussionDeleted', (deletedDiscussionId) => {
+      fetchDiscussions();
+    });
+
     return () => {
       socket.off('discussionCreated');
+      socket.off('discussionDeleted');
     };
-  }, [id, socket]);
+  }, [id, socket, discussions]);
 
   const handleNewDiscussionSubmit = async (event) => {
     event.preventDefault();
@@ -62,6 +68,17 @@ function MovieDetailPage({ user, socket }) {
 
     } catch (error) {
       console.error('Erreur lors de la création de la nouvelle discussion :', error);
+    }
+  };
+
+  const handleDeleteDiscussion = async (discussionId) => {
+    try {
+      await axios.delete(`http://localhost:3000/api/discussion/${discussionId}`);
+      // Émettre l'événement de suppression de discussion
+      socket.emit('deleteDiscussion', discussionId);
+      
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la discussion :', error);
     }
   };
 
@@ -85,7 +102,9 @@ function MovieDetailPage({ user, socket }) {
             <Link to={`/discussion/${discussion._id}`}>
               <p>Titre : {discussion.title}</p>
             </Link>
-            {/* Ajoutez le créateur de la discussion ici si nécessaire */}
+            {user.userId === discussion.userId && (
+              <button onClick={() => handleDeleteDiscussion(discussion._id)}>Supprimer la discussion</button>
+            )}
           </li>
         ))}
       </ul>

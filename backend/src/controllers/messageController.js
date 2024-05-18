@@ -1,4 +1,5 @@
 const Message = require('../models/messageModel');
+const Like = require('../models/likeModel');
 
 exports.createMessage = async (req, res) => {
   try {
@@ -19,3 +20,18 @@ exports.getMessagesByDiscussionId = async (req, res) => {
       res.status(500).json({ error: error.message });
     }
   };
+
+
+// Supprimer un message par son ID
+exports.deleteMessage = async (req, res) => {
+  try {
+    const { messageId } = req.params;
+    // Supprimer tous les likes associés au message
+    await Like.deleteMany({ messageId });
+    // Supprimer le message
+    await Message.findByIdAndDelete(messageId);
+    res.status(200).json({ message: 'Message supprimé avec succès' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};

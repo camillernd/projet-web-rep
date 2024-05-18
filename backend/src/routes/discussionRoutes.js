@@ -11,4 +11,7 @@ router.get('/', discussionController.getDiscussionsByFilmId);
 // Route pour obtenir une discussion par son ID
 router.get('/:discussionId', discussionController.getDiscussionById);
 
+// Route pour supprimer une discussion par ID
+router.delete('/:discussionId', discussionController.deleteDiscussion);
+
 module.exports = router;

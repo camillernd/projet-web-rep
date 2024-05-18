@@ -24,22 +24,22 @@ function DiscussionPage({ user, socket }) {
     const fetchMessages = async () => {
       try {
         const messagesResponse = await axios.get(`http://localhost:3000/api/message?discussionId=${discussionId}`);
+        const messagesData = messagesResponse.data;
 
-        if (messagesResponse.data.length === 0) {
-          setMessages([{ _id: 'placeholder', content: "Pas encore de message" }]);
-        } else {
-          const messagesWithUserData = await Promise.all(messagesResponse.data.map(async message => {
+        if (messagesData.length > 0) {
+          const messagesWithUserData = await Promise.all(messagesData.map(async message => {
             const userResponse = await axios.get(`http://localhost:3000/api/user/${message.userId}`);
             const userData = userResponse.data.data;
 
             const likesResponse = await axios.get(`http://localhost:3000/api/like/count?messageId=${message._id}`);
             const likesCount = likesResponse.data.likesCount;
 
-            const messageWithUserDataAndLikes = { ...message, userData, likesCount };
-            return messageWithUserDataAndLikes;
+            return { ...message, userData, likesCount };
           }));
 
           setMessages(messagesWithUserData);
+        } else {
+          setMessages([]);
         }
       } catch (error) {
         console.error('Erreur lors de la récupération des messages :', error);
@@ -48,13 +48,18 @@ function DiscussionPage({ user, socket }) {
 
     fetchData();
 
-    // Écouter l'événement de création de message
-    socket.on('messageCreated', () => {
-      fetchMessages(); // Appel de fetchMessages à chaque création de message
-    });
+    // Écouter les événements
+    socket.on('messageCreated', fetchMessages);
+    socket.on('messageLiked', fetchMessages);
+    socket.on('messageUnliked', fetchMessages);
+    socket.on('messageDeleted', fetchMessages);
 
     return () => {
-      socket.off('messageCreated');
+      // Retirer les écouteurs d'événements lors du démontage du composant
+      socket.off('messageCreated', fetchMessages);
+      socket.off('messageLiked', fetchMessages);
+      socket.off('messageUnliked', fetchMessages);
+      socket.off('messageDeleted', fetchMessages);
     };
   }, [discussionId, socket]);
 
@@ -72,9 +77,18 @@ function DiscussionPage({ user, socket }) {
       socket.emit('createMessage', newMessage);
 
       setNewMessageContent(''); // Réinitialiser le contenu du nouveau message
-      
     } catch (error) {
       console.error('Erreur lors de la création du nouveau message :', error);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId) => {
+    try {
+      await axios.delete(`http://localhost:3000/api/message/${messageId}`);
+      // Émettre l'événement de suppression de message
+      socket.emit('deleteMessage', messageId);
+    } catch (error) {
+      console.error('Erreur lors de la suppression du message :', error);
     }
   };
 
@@ -92,19 +106,25 @@ function DiscussionPage({ user, socket }) {
       )}
 
       <h3>Messages associés :</h3>
-      <ul>
-        {messages.map(message => (
-          <li key={message._id}>
-            <p>{message.content}</p>
-            {message.userData && (
-              <p>Créé par : {message.userData.firstName} {message.userData.lastName}</p>
-            )}
-            <p>Likes: {message.likesCount}</p>
-            {/* Ajouter le bouton LikeButton avec les propriétés nécessaires */}
-            <LikeButton user={user} messageId={message._id} />
-          </li>
-        ))}
-      </ul>
+      {messages.length > 0 ? (
+        <ul>
+          {messages.map(message => (
+            <li key={message._id}>
+              <p>{message.content}</p>
+              {message.userData && (
+                <p>Créé par : {message.userData.firstName} {message.userData.lastName}</p>
+              )}
+              {user.userId === message.userId && (
+                <button onClick={() => handleDeleteMessage(message._id)}>Supprimer le message</button>
+              )}
+              <LikeButton user={user} messageId={message._id} socket={socket} />
+              <p>Total des likes : {message.likesCount}</p>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>Pas encore de message</p>
+      )}
 
       <form onSubmit={handleNewMessageSubmit}>
         <input 

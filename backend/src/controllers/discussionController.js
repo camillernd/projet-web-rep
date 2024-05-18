@@ -1,4 +1,5 @@
 const Discussion = require('../models/discussionModel');
+const Message = require('../models/messageModel');
 
 // Créer une nouvelle discussion
 exports.createDiscussion = async (req, res) => {
@@ -42,5 +43,19 @@ exports.getDiscussionsByFilmId = async (req, res) => {
   } catch (error) {
     console.error('Erreur lors de la récupération des discussions par film ID :', error);
     res.status(500).json({ error: 'Erreur lors de la récupération des discussions.' });
+  }
+};
+
+// Supprimer une discussion par son ID
+exports.deleteDiscussion = async (req, res) => {
+  try {
+    const { discussionId } = req.params;
+    // Supprimer tous les messages associés à la discussion
+    await Message.deleteMany({ discussionId });
+    // Supprimer la discussion
+    await Discussion.findByIdAndDelete(discussionId);
+    res.status(200).json({ message: 'Discussion supprimée avec succès' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
