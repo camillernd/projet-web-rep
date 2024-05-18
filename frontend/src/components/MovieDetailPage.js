@@ -36,20 +36,16 @@ function MovieDetailPage({ user, socket }) {
     fetchData();
 
     // Écouter l'événement de création de discussion
-    socket.on('discussionCreated', () => {
-      fetchDiscussions();
-    });
+    socket.on('discussionCreated', fetchDiscussions);
 
     // Écouter l'événement de suppression de discussion
-    socket.on('discussionDeleted', (deletedDiscussionId) => {
-      fetchDiscussions();
-    });
+    socket.on('discussionDeleted', fetchDiscussions);
 
     return () => {
-      socket.off('discussionCreated');
-      socket.off('discussionDeleted');
+      socket.off('discussionCreated', fetchDiscussions);
+      socket.off('discussionDeleted', fetchDiscussions);
     };
-  }, [id, socket, discussions]);
+  }, [id, socket]);
 
   const handleNewDiscussionSubmit = async (event) => {
     event.preventDefault();
@@ -96,18 +92,22 @@ function MovieDetailPage({ user, socket }) {
       )}
 
       <h3>Discussions associées :</h3>
-      <ul>
-        {discussions.map(discussion => (
-          <li key={discussion._id}>
-            <Link to={`/discussion/${discussion._id}`}>
-              <p>Titre : {discussion.title}</p>
-            </Link>
-            {user.userId === discussion.userId && (
-              <button onClick={() => handleDeleteDiscussion(discussion._id)}>Supprimer la discussion</button>
-            )}
-          </li>
-        ))}
-      </ul>
+      {discussions.length > 0 ? (
+        <ul>
+          {discussions.map(discussion => (
+            <li key={discussion._id}>
+              <Link to={`/discussion/${discussion._id}`}>
+                <p>Titre : {discussion.title}</p>
+              </Link>
+              {user.userId === discussion.userId && (
+                <button onClick={() => handleDeleteDiscussion(discussion._id)}>Supprimer la discussion</button>
+              )}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p>Pas encore de discussions</p>
+      )}
 
       <form onSubmit={handleNewDiscussionSubmit}>
         <input 
