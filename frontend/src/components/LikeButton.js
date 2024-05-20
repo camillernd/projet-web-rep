@@ -1,9 +1,12 @@
-// LikeButton.js
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import heartFullIcon from '../assets/full-heart.png';
+import heartEmptyIcon from '../assets/empty-heart.png';
+import './LikeButton.css';
 
-function LikeButton({ user, messageId, socket }) {
+function LikeButton({ user, messageId, socket, likesCount }) {
   const [liked, setLiked] = useState(false);
+  const [currentLikesCount, setCurrentLikesCount] = useState(likesCount);
 
   useEffect(() => {
     const fetchLikeStatus = async () => {
@@ -21,21 +24,20 @@ function LikeButton({ user, messageId, socket }) {
   const handleLike = async () => {
     try {
       if (liked) {
-        console.log('on est bien entrés ici')
-        console.log(messageId);
-        console.log(user.userId);
         await axios.delete('http://localhost:3000/api/like', {
-            data: {
-                messageId: messageId,
-                userId: user.userId
-            }
+          data: {
+            messageId: messageId,
+            userId: user.userId
+          }
         });
         setLiked(false);
-        socket.emit('unlikeMessage', { messageId: messageId, userId: user.userId }); // Émettre un événement unlikeMessage
+        setCurrentLikesCount(currentLikesCount - 1);
+        socket.emit('unlikeMessage', { messageId: messageId, userId: user.userId });
       } else {
         await axios.post(`http://localhost:3000/api/like`, { messageId, userId: user.userId });
         setLiked(true);
-        socket.emit('likeMessage', { messageId: messageId, userId: user.userId }); // Émettre un événement likeMessage
+        setCurrentLikesCount(currentLikesCount + 1);
+        socket.emit('likeMessage', { messageId: messageId, userId: user.userId });
       }
     } catch (error) {
       console.error('Error updating like status:', error);
@@ -43,8 +45,9 @@ function LikeButton({ user, messageId, socket }) {
   };
 
   return (
-    <button onClick={handleLike}>
-      {liked ? 'Liké' : 'Pas Liké'}
+    <button onClick={handleLike} className="like-button">
+      <img src={liked ? heartFullIcon : heartEmptyIcon} alt="Like" className="like-icon" />
+      <span className="likes-count">{currentLikesCount}</span>
     </button>
   );
 }

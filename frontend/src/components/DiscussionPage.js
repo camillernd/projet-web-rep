@@ -1,19 +1,27 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import LikeButton from './LikeButton'; // Importer le composant LikeButton
+import MessageItem from './MessageItem';
 
 function DiscussionPage({ user, socket }) {
   const { discussionId } = useParams();
   const [discussionData, setDiscussionData] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessageContent, setNewMessageContent] = useState('');
+  const [creatorName, setCreatorName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         const discussionResponse = await axios.get(`http://localhost:3000/api/discussion/${discussionId}`);
         setDiscussionData(discussionResponse.data);
+
+        // Récupérer les informations sur l'utilisateur qui a créé la discussion
+        const userResponse = await axios.get(`http://localhost:3000/api/user/${discussionResponse.data.userId}`);
+        const userData = userResponse.data.data;
+        // Concaténer le nom et prénom pour afficher le créateur de la discussion
+        const creatorFullName = `${userData.firstName} ${userData.lastName}`;
+        setCreatorName(creatorFullName);
 
         fetchMessages(); // Appel initial pour récupérer les messages
       } catch (error) {
@@ -96,10 +104,13 @@ function DiscussionPage({ user, socket }) {
     <div>
       {discussionData ? (
         <div>
-          <h2>Titre de la discussion : {discussionData.title}</h2>
-          {discussionData.userData && (
-            <p>Créé par : {discussionData.userData.firstName} {discussionData.userData.lastName}</p>
-          )}
+          <h2>
+            Titre de la discussion : {discussionData.title}
+            {/* Afficher le nom du créateur à côté du titre de la discussion */}
+            {creatorName && (
+              <span> - Créé par : {creatorName}</span>
+            )}
+          </h2>
         </div>
       ) : (
         <p>Chargement en cours...</p>
@@ -107,19 +118,15 @@ function DiscussionPage({ user, socket }) {
 
       <h3>Messages associés :</h3>
       {messages.length > 0 ? (
-        <ul>
+        <ul style={{ listStyleType: 'none', padding: 0 }}>
           {messages.map(message => (
-            <li key={message._id}>
-              <p>{message.content}</p>
-              {message.userData && (
-                <p>Créé par : {message.userData.firstName} {message.userData.lastName}</p>
-              )}
-              {user.userId === message.userId && (
-                <button onClick={() => handleDeleteMessage(message._id)}>Supprimer le message</button>
-              )}
-              <LikeButton user={user} messageId={message._id} socket={socket} />
-              <p>Total des likes : {message.likesCount}</p>
-            </li>
+            <MessageItem
+              key={message._id}
+              message={message}
+              user={user}
+              onDelete={() => handleDeleteMessage(message._id)}
+              socket={socket}
+            />
           ))}
         </ul>
       ) : (

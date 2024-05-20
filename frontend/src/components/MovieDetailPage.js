@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { useParams, Link } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
+import DiscussionItem from './DiscussionItem'; // Importer le composant DiscussionItem
 
 function MovieDetailPage({ user, socket }) {
   const { id } = useParams();
@@ -27,7 +28,19 @@ function MovieDetailPage({ user, socket }) {
     const fetchDiscussions = async () => {
       try {
         const discussionsResponse = await axios.get(`http://localhost:3000/api/discussion?filmId=${id}`);
-        setDiscussions(discussionsResponse.data);
+        const discussionsData = discussionsResponse.data;
+
+        if (discussionsData.length > 0) {
+          const discussionsWithUserData = await Promise.all(discussionsData.map(async discussion => {
+            const userResponse = await axios.get(`http://localhost:3000/api/user/${discussion.userId}`);
+            const userData = userResponse.data.data;
+            return { ...discussion, userData };
+          }));
+
+          setDiscussions(discussionsWithUserData);
+        } else {
+          setDiscussions([]);
+        }
       } catch (error) {
         console.error('Erreur lors de la récupération des discussions :', error);
       }
@@ -61,7 +74,6 @@ function MovieDetailPage({ user, socket }) {
       socket.emit('createDiscussion', newDiscussion);
 
       setNewDiscussionTitle('');
-
     } catch (error) {
       console.error('Erreur lors de la création de la nouvelle discussion :', error);
     }
@@ -72,7 +84,6 @@ function MovieDetailPage({ user, socket }) {
       await axios.delete(`http://localhost:3000/api/discussion/${discussionId}`);
       // Émettre l'événement de suppression de discussion
       socket.emit('deleteDiscussion', discussionId);
-      
     } catch (error) {
       console.error('Erreur lors de la suppression de la discussion :', error);
     }
@@ -93,16 +104,14 @@ function MovieDetailPage({ user, socket }) {
 
       <h3>Discussions associées :</h3>
       {discussions.length > 0 ? (
-        <ul>
+        <ul style={{ listStyleType: 'none', padding: 0 }}>
           {discussions.map(discussion => (
-            <li key={discussion._id}>
-              <Link to={`/discussion/${discussion._id}`}>
-                <p>Titre : {discussion.title}</p>
-              </Link>
-              {user.userId === discussion.userId && (
-                <button onClick={() => handleDeleteDiscussion(discussion._id)}>Supprimer la discussion</button>
-              )}
-            </li>
+            <DiscussionItem
+              key={discussion._id}
+              discussion={discussion}
+              user={user}
+              onDelete={() => handleDeleteDiscussion(discussion._id)}
+            />
           ))}
         </ul>
       ) : (
